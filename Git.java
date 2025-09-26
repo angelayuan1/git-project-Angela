@@ -43,6 +43,22 @@ public class Git {
         }
         return null;
     }
+
+    public static void blob(String filepath) throws IOException {
+        File f1 = new File(filepath);
+        String hash = hashFile(filepath);
+        File f2 = new File("git/objects/" + hash);
+        f2.createNewFile();
+        try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(f2))) {
+            try (BufferedReader bufferedReader = new BufferedReader(new FileReader(f1))) {
+                String s;
+                while ((s = bufferedReader.readLine()) != null) {
+                    bufferedWriter.write(s);
+                    bufferedWriter.newLine();
+                }
+            }
+        }
+    }
     public static void main(String[] args) throws IOException {
         initRepo();
     }
