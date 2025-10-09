@@ -256,6 +256,55 @@ public class Git {
         }
     }
 
+    public static String commit(String author, String message) throws IOException {
+        initRepo();
+    
+        String parent = readHead();             // previous commit SHA, or null
+        String root = genTreesFromIdx();        // build trees from index; returns root tree SHA
+        String date = new java.util.Date().toString();
+    
+        StringBuilder sb = new StringBuilder();
+        sb.append("tree: ").append(root).append("\n");
+        if (parent != null && parent.length() > 0) {
+            sb.append("parent: ").append(parent).append("\n");
+        }
+        sb.append("author: ").append(author).append("\n");
+        sb.append("date: ").append(date).append("\n");
+        sb.append("message: ").append(message).append("\n");
+    
+        String content = sb.toString();
+        String sha = sha1(content);
+    
+        File objDir = new File("git/objects");
+        if (!objDir.exists()) objDir.mkdirs();
+        File out = new File(objDir, sha);
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(out))) {
+            bw.write(content);
+        }
+    
+        try (BufferedWriter hw = new BufferedWriter(new FileWriter("git/HEAD"))) {
+            hw.write(sha);
+        }
+    
+        return sha;
+    }
+    
+    private static String readHead() {
+        File h = new File("git/HEAD");
+        if (!h.exists() || !h.isFile()) {
+            return null;
+        }
+        try (BufferedReader br = new BufferedReader(new FileReader(h))) {
+            String s = br.readLine();
+            if (s == null) return null;
+            s = s.trim();
+            if (s.length() == 0) return null;
+            return s;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     public static void main(String[] args) throws IOException {
         initRepo();
         addToIdx(hashFile("git/testFile"), "git/testFile");
