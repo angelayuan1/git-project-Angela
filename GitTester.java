@@ -93,6 +93,8 @@ public class GitTester extends Git {
         }
     }
 
+    
+
     public static void main(String[] args) throws IOException {
         initRepo();
         System.out.println(verify());
@@ -139,5 +141,54 @@ try {
     System.out.println("Failed to build/trace root tree");
     e.printStackTrace();
 }
+
+try {
+    GitRekt gw = new GitRekt();
+
+    // initialize via wrapper
+    gw.reset();
+    gw.init();
+
+    // create a tiny project for the wrapper to work with
+    File inner = new File("myProgram/inner");
+    if (!inner.exists()) inner.mkdirs();
+    try (BufferedWriter w = new BufferedWriter(new FileWriter("myProgram/hello.txt"))) {
+        w.write("hello");
+    }
+    try (BufferedWriter w = new BufferedWriter(new FileWriter("myProgram/inner/world.txt"))) {
+        w.write("world");
+    }
+
+    // stage files using the wrapper
+    gw.add("myProgram/hello.txt");
+    gw.add("myProgram/inner/world.txt");
+
+    // first commit
+    String c1 = gw.commit("Student", "wrapper commit 1");
+    System.out.println("GitRekt commit1: " + c1);
+
+    // modify one file
+    try (BufferedWriter w = new BufferedWriter(new FileWriter("myProgram/hello.txt"))) {
+        w.write("hello v2");
+    }
+
+    // restage and second commit
+    gw.add("myProgram/hello.txt");
+    String c2 = gw.commit("Student", "wrapper commit 2");
+    System.out.println("GitRekt commit2: " + c2);
+
+    // print HEAD to confirm latest commit
+    File head = new File("git/HEAD");
+    if (head.exists()) {
+        BufferedReader br = new BufferedReader(new FileReader(head));
+        String headSha = br.readLine();
+        br.close();
+        System.out.println("HEAD now points to: " + headSha);
+    }
+} catch (Exception ex) {
+    System.out.println("GitRekt wrapper test failed");
+    ex.printStackTrace();
+}
+
     }
 }
