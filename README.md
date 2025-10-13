@@ -7,6 +7,9 @@ To add files to the index use addToIdx(hashFile("path/to/your/file"), "filename.
 To reset or clean up the repository for testing, reset() clears everything in the objects foler and refreshes index, while cleanUp() removes the entire git folder.
 the tester will initialize the repo if it doesn’t exist, create sample text files, blob them & add entries to index file, and reset.
 # Cyrus Additions
+genTreesFromIdx()
+Fixed so if no subdirs remain, collapse all top-level items into a root tree
+
 In GP-4.1, functionality was added to trace and verify the root tree that gets built from the index file.  
 Helper methods `readObjectText()` and `traceTree()` in `GitTester.java` recursively print and verify tree contents.  
 This ensures all blobs and subtrees appear in the correct structure under the root tree, confirming proper linking between files and directories.  
