@@ -187,42 +187,76 @@ public class Git {
     public static String genTreesFromIdx() throws IOException {
         File wl = createWorkingList();
         List<entry> entries = new ArrayList<>();
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(wl))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(wl))) {
             String line;
-            while ((line = bufferedReader.readLine()) != null) {
+            while ((line = br.readLine()) != null) {
                 String[] parts = line.split(" ", 3);
                 entries.add(new entry(parts[0], parts[1], parts[2]));
             }
         }
+    
         while (entries.size() > 1) {
             String leafDir = findLeafDirectory(entries);
-            if (leafDir == null) break;
+    
+            // Cyrus Fix: if no subdirs remain, collapse all top-level items into a root tree
+            if (leafDir == null) {
+                List<String> trLines = new ArrayList<>();
+                for (entry te : entries) {
+                    if (!te.path.contains("/")) {
+                        trLines.add(te.type + " " + te.sha + " " + te.path);
+                    }
+                }
+                Collections.sort(trLines);
+                String content = String.join("\n", trLines) + (trLines.isEmpty() ? "" : "\n");
+                String rootSha = sha1(content);
+    
+                File objDir = new File("git/objects");
+                if (!objDir.exists()) objDir.mkdirs();
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(new File(objDir, rootSha)))) {
+                    bw.write(content);
+                }
+    
+                // replace all top-level entries with a single root tree entry
+                List<entry> next = new ArrayList<>();
+                next.add(new entry("tree", rootSha, ""));  // path "" denotes root
+                // keep any existing subtree entries (if any) that already represent collapsed dirs
+                for (entry te : entries) {
+                    if (te.path.contains("/")) next.add(te);
+                }
+                entries = next;
+                break; // will exit loop; entries.size() may now be >1 if subtrees remain
+            }
+    
             List<entry> children = new ArrayList<>();
             for (entry te : entries) {
                 if (te.path.startsWith(leafDir + "/")) {
                     children.add(te);
                 }
             }
+    
             List<String> trLines = new ArrayList<>();
             for (entry te : children) {
                 String name = te.path.substring(te.path.lastIndexOf("/") + 1);
                 trLines.add(te.type + " " + te.sha + " " + name);
             }
             Collections.sort(trLines);
-            String c = String.join("\n", trLines) + "\n";
+            String c = String.join("\n", trLines) + (trLines.isEmpty() ? "" : "\n");
             String hash = sha1(c);
+    
             File objDir = new File("git/objects");
             if (!objDir.exists()) objDir.mkdirs();
-            File treeFile = new File(objDir, hash);
-            try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(treeFile))) {
-                bufferedWriter.write(c);
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(new File(objDir, hash)))) {
+                bw.write(c);
             }
+    
             entries.removeAll(children);
             entries.add(new entry("tree", hash, leafDir));
         }
+    
         entry root = entries.get(0);
         return root.sha;
     }
+    
     private static String findLeafDirectory(List<entry> entries) {
         Set<String> dirs = new HashSet<>();
         for (entry te : entries) {
