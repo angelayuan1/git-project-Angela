@@ -68,6 +68,9 @@ public class Git {
     }
 
     public static void addToIdx(String hash, String filepath) {
+        File ff = new File(filepath);
+        if (!ff.exists()) throw new IllegalArgumentException("File doesn't exist " + filepath);
+        if (ff.isDirectory()) throw new IllegalArgumentException("Can't add directory " + filepath);
         try {
             File f = new File("git/index");
             if (!f.exists()) f.createNewFile();
@@ -187,6 +190,11 @@ public class Git {
     public static String genTreesFromIdx() throws IOException {
         File wl = createWorkingList();
         List<entry> entries = new ArrayList<>();
+        if (entries.isEmpty()) {
+            File emp = new File("git/objects/empty");
+            try (FileWriter fw = new FileWriter(emp)) {}
+            return sha1("");
+        }
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(wl))) {
             String line;
             while ((line = bufferedReader.readLine()) != null) {
